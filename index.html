@@ -96,10 +96,10 @@
 <div class="tabbar">
   <button class="tab active" data-tab="all" onclick="switchTab(this)">すべて</button>
   <button class="tab" data-tab="0" onclick="switchTab(this)">ワロタ</button>
-  <button class="tab" data-tab="1" onclick="switchTab(this)">だめぽ</button>
-  <button class="tab" data-tab="2" onclick="switchTab(this)">にゅーもふ</button>
-  <button class="tab" data-tab="3" onclick="switchTab(this)">ぶろにゅー</button>
-  <button class="tab" data-tab="4" onclick="switchTab(this)">NEWまとめ</button>
+  <button class="tab" data-tab="1" onclick="switchTab(this)">にゅーもふ</button>
+  <button class="tab" data-tab="2" onclick="switchTab(this)">アルファルファ</button>
+  <button class="tab" data-tab="3" onclick="switchTab(this)">ハムスター</button>
+  <button class="tab" data-tab="4" onclick="switchTab(this)">コピペ情報局</button>
 </div>
 <main id="main">
   <div class="loading"><div class="spinner"></div><span>読み込み中...</span></div>
@@ -110,18 +110,15 @@
 </footer>
 
 <script>
-// プロキシ2種類を試す
-const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-];
+const RSS2JSON = url =>
+  `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
 
 const ANTENNAS = [
-  { name: 'ワロタあんてな', rss: 'https://matomeantena.com/index.rdf' },
-  { name: 'だめぽアンテナ', rss: 'https://damepoan.blog.fc2.com/?xml' },
-  { name: 'にゅーもふ',     rss: 'https://newmofu.doorblog.jp/index.rdf' },
-  { name: 'ぶろにゅー',     rss: 'https://blognews.fc2.com/?xml' },
-  { name: 'NEWまとめ速報',  rss: 'https://newmatosoku.com/feed' },
+  { name: 'ワロタあんてな',       rss: 'https://matomeantena.com/index.rdf' },
+  { name: 'にゅーもふ',           rss: 'https://newmofu.doorblog.jp/index.rdf' },
+  { name: 'アルファルファモザイク', rss: 'https://alfalfalfa.com/index.rdf' },
+  { name: 'ハムスター速報',        rss: 'https://hamusoku.com/index.rdf' },
+  { name: 'コピペ情報局',          rss: 'https://news.2chblog.jp/index.rdf' },
 ];
 
 let feedData = ANTENNAS.map(() => []);
@@ -130,26 +127,6 @@ let currentTab = 'all';
 let readIds = new Set();
 try { readIds = new Set(JSON.parse(localStorage.getItem('r')||'[]')); } catch {}
 
-// XML→記事パース
-function parseRSS(xml, name, idx) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'text/xml');
-  const items = [...doc.querySelectorAll('item')];
-  return items.slice(0,25).map((item, i) => {
-    const title = item.querySelector('title')?.textContent || '';
-    const link  = item.querySelector('link')?.textContent?.trim() ||
-                  item.querySelector('link')?.getAttribute('href') || '#';
-    const pub   = item.querySelector('pubDate,published,date')?.textContent || '';
-    return {
-      id: (link || name+i).substring(0,80),
-      title: cleanText(title),
-      link,
-      date: pub ? new Date(pub) : new Date(0),
-      source: name,
-      idx,
-    };
-  });
-}
 
 function cleanText(s) {
   return s.replace(/<[^>]+>/g,'')
@@ -159,22 +136,24 @@ function cleanText(s) {
 
 async function fetchFeed(idx) {
   const { name, rss } = ANTENNAS[idx];
-  for (const makeUrl of PROXIES) {
-    try {
-      const res = await fetch(makeUrl(rss), { signal: AbortSignal.timeout(10000) });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const xml = data.contents || data.body || '';
-      if (!xml || xml.length < 100) continue;
-      const articles = parseRSS(xml, name, idx);
-      if (articles.length > 0) {
-        feedStatus[idx] = true;
-        return articles;
-      }
-    } catch {}
+  try {
+    const res = await fetch(RSS2JSON(rss), { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (data.status !== 'ok' || !data.items?.length) throw new Error();
+    feedStatus[idx] = true;
+    return data.items.slice(0, 25).map((item, i) => ({
+      id: (item.link || name + i).substring(0, 80),
+      title: cleanText(item.title || ''),
+      link: item.link || '#',
+      date: item.pubDate ? new Date(item.pubDate) : new Date(0),
+      source: name,
+      idx,
+    }));
+  } catch {
+    feedStatus[idx] = false;
+    return [];
   }
-  feedStatus[idx] = false;
-  return [];
 }
 
 async function loadAll() {
