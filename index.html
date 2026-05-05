@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0a0a0f">
 <title>まとめリーダー</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
 <style>
   :root {
     --bg: #0a0a0f; --surface: #13131c; --surface2: #1c1c28;
@@ -24,7 +25,8 @@
   .btn {
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--muted); padding: 6px 12px; border-radius: 20px;
-    font-size: 12px; font-family: inherit; cursor: pointer;
+    font-size: 12px; font-family: inherit; cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center;
   }
   .btn:active { background: var(--border); }
   .btn.accent { border-color: var(--accent); color: var(--accent); }
@@ -57,18 +59,25 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .article-card {
-    display: flex; align-items: flex-start; gap: 10px;
+    display: flex; align-items: center; gap: 10px;
     background: var(--surface); border-radius: 10px; padding: 11px 12px;
-    margin-bottom: 4px; text-decoration: none; color: inherit;
+    margin-bottom: 4px; cursor: pointer;
   }
   .article-card:active { background: var(--surface2); }
   .article-card.read { opacity: 0.35; }
-  .rank { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 22px; padding-top: 2px; flex-shrink: 0; text-align: center; }
+  .rank { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 22px; flex-shrink: 0; text-align: center; }
   .rank.top3 { font-size: 14px; }
   .article-body { flex: 1; min-width: 0; }
   .article-title { font-size: 14px; font-weight: 700; line-height: 1.5; margin-bottom: 5px; word-break: break-all; }
   .article-meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); }
   .source-name { color: var(--accent); font-weight: 700; }
+  .ext-btn {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); font-size: 13px; display: flex; align-items: center;
+    justify-content: center; text-decoration: none; cursor: pointer;
+  }
+  .ext-btn:active { background: var(--border); }
   .status-bar {
     background: var(--surface); border-radius: 8px; padding: 8px 12px;
     margin-bottom: 8px; font-size: 11px; color: var(--muted);
@@ -83,9 +92,83 @@
     padding: 8px 14px; font-size: 11px; color: var(--muted);
     display: flex; justify-content: space-between;
   }
+
+  /* リーダーモーダル */
+  #reader-modal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: var(--bg); flex-direction: column;
+    overscroll-behavior: contain;
+  }
+  #reader-modal.open { display: flex; }
+  #reader-header {
+    position: sticky; top: 0; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  #reader-body {
+    flex: 1; overflow-y: auto; padding: 18px 18px 80px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #reader-title {
+    font-size: 18px; font-weight: 900; line-height: 1.6;
+    margin-bottom: 18px; color: var(--text);
+  }
+  #reader-content {
+    font-size: 15px; line-height: 2; color: #d8d8ea;
+  }
+  #reader-content img {
+    max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; display: block;
+  }
+  #reader-content a { color: var(--accent); word-break: break-all; }
+  #reader-content p { margin-bottom: 14px; }
+  #reader-content h1, #reader-content h2, #reader-content h3 {
+    margin: 18px 0 10px; font-weight: 900; line-height: 1.5;
+  }
+  #reader-content blockquote {
+    border-left: 3px solid var(--accent); padding-left: 14px;
+    color: var(--muted); margin: 14px 0; font-style: normal;
+  }
+  #reader-content ul, #reader-content ol {
+    padding-left: 20px; margin-bottom: 14px;
+  }
+  #reader-content li { margin-bottom: 6px; }
+  #reader-content pre, #reader-content code {
+    background: var(--surface2); border-radius: 4px; padding: 2px 6px;
+    font-size: 13px; word-break: break-all;
+  }
+  #reader-content table {
+    width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 13px;
+  }
+  #reader-content td, #reader-content th {
+    border: 1px solid var(--border); padding: 6px 8px;
+  }
+  .reader-loading {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 60px 0; gap: 14px;
+    color: var(--muted); font-size: 13px;
+  }
+  .reader-error {
+    text-align: center; padding: 40px 20px; color: var(--muted);
+    font-size: 13px; line-height: 2.4;
+  }
 </style>
 </head>
 <body>
+
+<!-- リーダーモーダル -->
+<div id="reader-modal">
+  <div id="reader-header">
+    <button class="btn" onclick="closeReader()">← 戻る</button>
+    <a id="reader-ext" href="#" target="_blank" rel="noopener" class="btn accent" style="margin-left:auto">
+      元記事 ↗
+    </a>
+  </div>
+  <div id="reader-body">
+    <div id="reader-title"></div>
+    <div id="reader-content"></div>
+  </div>
+</div>
+
 <header>
   <div class="logo">📡 まとめリーダー</div>
   <div class="header-right">
@@ -114,24 +197,29 @@ const RSS2JSON = url =>
   `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
 
 const ANTENNAS = [
-  { name: 'ワロタあんてな',       rss: 'https://matomeantena.com/index.rdf' },
-  { name: 'にゅーもふ',           rss: 'https://newmofu.doorblog.jp/index.rdf' },
+  { name: 'ワロタあんてな',        rss: 'https://matomeantena.com/index.rdf' },
+  { name: 'にゅーもふ',            rss: 'https://newmofu.doorblog.jp/index.rdf' },
   { name: 'アルファルファモザイク', rss: 'https://alfalfalfa.com/index.rdf' },
-  { name: 'ハムスター速報',        rss: 'https://hamusoku.com/index.rdf' },
-  { name: 'コピペ情報局',          rss: 'https://news.2chblog.jp/index.rdf' },
+  { name: 'ハムスター速報',         rss: 'https://hamusoku.com/index.rdf' },
+  { name: 'コピペ情報局',           rss: 'https://news.2chblog.jp/index.rdf' },
 ];
 
-let feedData = ANTENNAS.map(() => []);
-let feedStatus = ANTENNAS.map(() => null); // true=OK, false=NG
+let feedData   = ANTENNAS.map(() => []);
+let feedStatus = ANTENNAS.map(() => null);
 let currentTab = 'all';
-let readIds = new Set();
-try { readIds = new Set(JSON.parse(localStorage.getItem('r')||'[]')); } catch {}
+let readIds    = new Set();
+let articleMap = {};
 
+try { readIds = new Set(JSON.parse(localStorage.getItem('r') || '[]')); } catch {}
 
 function cleanText(s) {
-  return s.replace(/<[^>]+>/g,'')
+  return s.replace(/<[^>]+>/g, '')
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
     .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').trim();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function fetchFeed(idx) {
@@ -143,10 +231,10 @@ async function fetchFeed(idx) {
     if (data.status !== 'ok' || !data.items?.length) throw new Error();
     feedStatus[idx] = true;
     return data.items.slice(0, 25).map((item, i) => ({
-      id: (item.link || name + i).substring(0, 80),
-      title: cleanText(item.title || ''),
-      link: item.link || '#',
-      date: item.pubDate ? new Date(item.pubDate) : new Date(0),
+      id:     (item.link || name + i).substring(0, 80),
+      title:  cleanText(item.title || ''),
+      link:   item.link || '#',
+      date:   item.pubDate ? new Date(item.pubDate) : new Date(0),
       source: name,
       idx,
     }));
@@ -157,12 +245,13 @@ async function fetchFeed(idx) {
 }
 
 async function loadAll() {
-  document.getElementById('main').innerHTML = '<div class="loading"><div class="spinner"></div><span>読み込み中...</span></div>';
+  document.getElementById('main').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span>読み込み中...</span></div>';
   feedStatus = ANTENNAS.map(() => null);
-  const results = await Promise.all(ANTENNAS.map((_,i) => fetchFeed(i)));
-  results.forEach((d,i) => { feedData[i] = d; });
+  const results = await Promise.all(ANTENNAS.map((_, i) => fetchFeed(i)));
+  results.forEach((d, i) => { feedData[i] = d; });
   document.getElementById('ftime').textContent =
-    new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ' 更新';
+    new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) + ' 更新';
   updateBadges();
   render();
 }
@@ -171,9 +260,9 @@ function getArticles() {
   if (currentTab === 'all') {
     const seen = new Set();
     return feedData.flat()
-      .sort((a,b) => b.date - a.date)
+      .sort((a, b) => b.date - a.date)
       .filter(a => {
-        const k = a.title.substring(0,20);
+        const k = a.title.substring(0, 20);
         if (seen.has(k)) return false;
         seen.add(k); return true;
       });
@@ -186,11 +275,13 @@ function render() {
   document.getElementById('fcnt').textContent = `記事 ${articles.length}件`;
   const main = document.getElementById('main');
 
-  // ステータスバー
-  const statusHtml = ANTENNAS.map((a,i) => {
+  articleMap = {};
+  articles.forEach(a => { articleMap[a.id] = a; });
+
+  const statusHtml = ANTENNAS.map((a, i) => {
     const s = feedStatus[i];
     if (s === null) return '';
-    return `<span class="${s?'status-ok':'status-ng'}">${s?'✓':'✗'} ${a.name}</span>`;
+    return `<span class="${s ? 'status-ok' : 'status-ng'}">${s ? '✓' : '✗'} ${a.name}</span>`;
   }).join('');
 
   if (!articles.length) {
@@ -200,25 +291,112 @@ function render() {
     return;
   }
 
-  const cardsHtml = articles.map((a,i) => {
+  const cardsHtml = articles.map((a, i) => {
     const isRead = readIds.has(a.id);
-    const r = i<3 ? ['🥇','🥈','🥉'][i] : (i+1);
-    const rClass = i<3 ? 'rank top3' : 'rank';
-    const t = relTime(a.date);
-    const sid = a.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return `<a class="article-card${isRead?' read':''}" href="${esc(a.link)}" target="_blank" rel="noopener" onclick="markRead('${sid}',this)">
+    const r      = i < 3 ? ['🥇','🥈','🥉'][i] : (i + 1);
+    const rClass = i < 3 ? 'rank top3' : 'rank';
+    const t      = relTime(a.date);
+    const sid    = a.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div class="article-card${isRead ? ' read' : ''}" onclick="openReader('${sid}')">
       <div class="${rClass}">${r}</div>
       <div class="article-body">
         <div class="article-title">${esc(a.title)}</div>
         <div class="article-meta">
           <span class="source-name">${esc(a.source)}</span>
-          ${t?`<span>${t}</span>`:''}
+          ${t ? `<span>${t}</span>` : ''}
         </div>
       </div>
-    </a>`;
+      <a class="ext-btn" href="${esc(a.link)}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation(); markReadById('${sid}')" title="元記事を開く">↗</a>
+    </div>`;
   }).join('');
 
   main.innerHTML = `<div class="status-bar">${statusHtml}</div>${cardsHtml}`;
+}
+
+/* ── リーダーモード ── */
+async function openReader(id) {
+  const a = articleMap[id];
+  if (!a) return;
+
+  markReadById(id);
+
+  document.getElementById('reader-ext').href = a.link;
+  document.getElementById('reader-title').textContent = a.title;
+  document.getElementById('reader-content').innerHTML =
+    '<div class="reader-loading"><div class="spinner"></div><span>記事を取得中...</span></div>';
+  document.getElementById('reader-modal').classList.add('open');
+  document.getElementById('reader-body').scrollTop = 0;
+
+  try {
+    const res = await fetch(
+      `https://api.allorigins.win/get?url=${encodeURIComponent(a.link)}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const html = data.contents;
+    if (!html || html.length < 300) throw new Error('empty');
+
+    const parser  = new DOMParser();
+    const doc     = parser.parseFromString(html, 'text/html');
+
+    // ベースURL設定で相対リンク解決
+    const base = doc.createElement('base');
+    base.href  = a.link;
+    doc.head.prepend(base);
+
+    const article = new Readability(doc).parse();
+    if (!article?.content) throw new Error('parse failed');
+
+    document.getElementById('reader-title').textContent = article.title || a.title;
+    // 外部リンクをすべて target=_blank に
+    const tmp = document.createElement('div');
+    tmp.innerHTML = article.content;
+    tmp.querySelectorAll('a').forEach(el => {
+      el.target = '_blank'; el.rel = 'noopener';
+    });
+    // スクリプト・iframe除去
+    tmp.querySelectorAll('script,iframe,ins,aside').forEach(el => el.remove());
+    document.getElementById('reader-content').innerHTML = tmp.innerHTML;
+
+  } catch {
+    document.getElementById('reader-content').innerHTML = `
+      <div class="reader-error">
+        記事の取得に失敗しました。<br>
+        <a href="${esc(a.link)}" target="_blank" rel="noopener"
+           class="btn accent" style="margin-top:16px">
+          元記事を開く ↗
+        </a>
+      </div>`;
+  }
+}
+
+function closeReader() {
+  document.getElementById('reader-modal').classList.remove('open');
+}
+
+// Android の戻るボタン対応
+window.addEventListener('popstate', () => {
+  if (document.getElementById('reader-modal').classList.contains('open')) {
+    closeReader();
+  }
+});
+document.getElementById('reader-modal').addEventListener('transitionend', () => {});
+
+/* ── 既読管理 ── */
+function markReadById(id) {
+  readIds.add(id);
+  saveRead();
+  document.querySelectorAll('.article-card').forEach(el => {
+    if (el.querySelector(`[onclick*="${id.substring(0,20)}"]`) || el.getAttribute('onclick')?.includes(id.substring(0,20))) return;
+  });
+  // カードのopacityを直接更新
+  document.querySelectorAll('.article-card').forEach(el => {
+    const onclick = el.getAttribute('onclick') || '';
+    if (onclick.includes(id.replace(/'/g, "\\'"))) el.classList.add('read');
+  });
+  updateBadges();
 }
 
 function markRead(id, el) {
@@ -247,11 +425,15 @@ function updateBadges() {
   document.querySelectorAll('.tab').forEach(tab => {
     const b = tab.querySelector('.badge');
     if (b) b.remove();
-    const idx = tab.dataset.tab;
-    const arts = idx==='all' ? (() => {
-      const seen=new Set();
-      return feedData.flat().filter(a=>{const k=a.title.substring(0,20);if(seen.has(k))return false;seen.add(k);return true;});
-    })() : (feedData[parseInt(idx)]||[]);
+    const idx  = tab.dataset.tab;
+    const arts = idx === 'all' ? (() => {
+      const seen = new Set();
+      return feedData.flat().filter(a => {
+        const k = a.title.substring(0, 20);
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+    })() : (feedData[parseInt(idx)] || []);
     const unread = arts.filter(a => !readIds.has(a.id)).length;
     if (unread > 0) {
       const span = document.createElement('span');
@@ -271,19 +453,15 @@ function switchTab(el) {
 
 function relTime(date) {
   if (!date?.getTime()) return '';
-  const m = Math.floor((Date.now()-date)/60000);
-  if (m<1) return 'たった今';
-  if (m<60) return `${m}分前`;
-  if (m<1440) return `${Math.floor(m/60)}時間前`;
-  return `${Math.floor(m/1440)}日前`;
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const m = Math.floor((Date.now() - date) / 60000);
+  if (m < 1)    return 'たった今';
+  if (m < 60)   return `${m}分前`;
+  if (m < 1440) return `${Math.floor(m / 60)}時間前`;
+  return `${Math.floor(m / 1440)}日前`;
 }
 
 loadAll();
-setInterval(loadAll, 20*60*1000);
+setInterval(loadAll, 20 * 60 * 1000);
 </script>
 </body>
 </html>
