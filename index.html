@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>まとめリーダー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131c; --surface2: #1c1c28;
+    --border: #242436; --accent: #e8640a; --text: #eeeef8; --muted: #77778a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100dvh; }
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-size: 17px; font-weight: 900; color: var(--accent); }
+  .header-right { display: flex; gap: 8px; }
+  .btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+  .btn:active { background: var(--border); }
+  .btn.accent { border-color: var(--accent); color: var(--accent); }
+  .tabbar {
+    position: sticky; top: 45px; z-index: 40;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 6px;
+  }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; padding: 10px 13px; font-size: 13px; font-weight: 700;
+    color: var(--muted); background: none; border: none;
+    border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab .badge {
+    display: inline-block; background: var(--accent); color: #fff;
+    font-size: 10px; padding: 1px 5px; border-radius: 10px; margin-left: 4px;
+  }
+  main { padding: 8px 10px 80px; }
+  .loading {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 70px 0; gap: 14px;
+    color: var(--muted); font-size: 13px;
+  }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .article-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface); border-radius: 10px; padding: 11px 12px;
+    margin-bottom: 4px; text-decoration: none; color: inherit;
+  }
+  .article-card:active { background: var(--surface2); }
+  .article-card.read { opacity: 0.35; }
+  .rank { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 22px; padding-top: 2px; flex-shrink: 0; text-align: center; }
+  .rank.top3 { font-size: 14px; }
+  .article-body { flex: 1; min-width: 0; }
+  .article-title { font-size: 14px; font-weight: 700; line-height: 1.5; margin-bottom: 5px; word-break: break-all; }
+  .article-meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); }
+  .source-name { color: var(--accent); font-weight: 700; }
+  .status-bar {
+    background: var(--surface); border-radius: 8px; padding: 8px 12px;
+    margin-bottom: 8px; font-size: 11px; color: var(--muted);
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .status-ok { color: #4ecc96; }
+  .status-ng { color: #ff5f7e; }
+  .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 13px; line-height: 2.2; }
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg); border-top: 1px solid var(--border);
+    padding: 8px 14px; font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📡 まとめリーダー</div>
+  <div class="header-right">
+    <button class="btn" onclick="markAllRead()">既読</button>
+    <button class="btn accent" onclick="loadAll()">↻ 更新</button>
+  </div>
+</header>
+<div class="tabbar">
+  <button class="tab active" data-tab="all" onclick="switchTab(this)">すべて</button>
+  <button class="tab" data-tab="0" onclick="switchTab(this)">ワロタ</button>
+  <button class="tab" data-tab="1" onclick="switchTab(this)">だめぽ</button>
+  <button class="tab" data-tab="2" onclick="switchTab(this)">にゅーもふ</button>
+  <button class="tab" data-tab="3" onclick="switchTab(this)">ぶろにゅー</button>
+  <button class="tab" data-tab="4" onclick="switchTab(this)">NEWまとめ</button>
+</div>
+<main id="main">
+  <div class="loading"><div class="spinner"></div><span>読み込み中...</span></div>
+</main>
+<footer>
+  <span id="fcnt">記事 0件</span>
+  <span id="ftime">--</span>
+</footer>
+
+<script>
+// プロキシ2種類を試す
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+const ANTENNAS = [
+  { name: 'ワロタあんてな', rss: 'https://matomeantena.com/index.rdf' },
+  { name: 'だめぽアンテナ', rss: 'https://damepoan.blog.fc2.com/?xml' },
+  { name: 'にゅーもふ',     rss: 'https://newmofu.doorblog.jp/index.rdf' },
+  { name: 'ぶろにゅー',     rss: 'https://blognews.fc2.com/?xml' },
+  { name: 'NEWまとめ速報',  rss: 'https://newmatosoku.com/feed' },
+];
+
+let feedData = ANTENNAS.map(() => []);
+let feedStatus = ANTENNAS.map(() => null); // true=OK, false=NG
+let currentTab = 'all';
+let readIds = new Set();
+try { readIds = new Set(JSON.parse(localStorage.getItem('r')||'[]')); } catch {}
+
+// XML→記事パース
+function parseRSS(xml, name, idx) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'text/xml');
+  const items = [...doc.querySelectorAll('item')];
+  return items.slice(0,25).map((item, i) => {
+    const title = item.querySelector('title')?.textContent || '';
+    const link  = item.querySelector('link')?.textContent?.trim() ||
+                  item.querySelector('link')?.getAttribute('href') || '#';
+    const pub   = item.querySelector('pubDate,published,date')?.textContent || '';
+    return {
+      id: (link || name+i).substring(0,80),
+      title: cleanText(title),
+      link,
+      date: pub ? new Date(pub) : new Date(0),
+      source: name,
+      idx,
+    };
+  });
+}
+
+function cleanText(s) {
+  return s.replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').trim();
+}
+
+async function fetchFeed(idx) {
+  const { name, rss } = ANTENNAS[idx];
+  for (const makeUrl of PROXIES) {
+    try {
+      const res = await fetch(makeUrl(rss), { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const xml = data.contents || data.body || '';
+      if (!xml || xml.length < 100) continue;
+      const articles = parseRSS(xml, name, idx);
+      if (articles.length > 0) {
+        feedStatus[idx] = true;
+        return articles;
+      }
+    } catch {}
+  }
+  feedStatus[idx] = false;
+  return [];
+}
+
+async function loadAll() {
+  document.getElementById('main').innerHTML = '<div class="loading"><div class="spinner"></div><span>読み込み中...</span></div>';
+  feedStatus = ANTENNAS.map(() => null);
+  const results = await Promise.all(ANTENNAS.map((_,i) => fetchFeed(i)));
+  results.forEach((d,i) => { feedData[i] = d; });
+  document.getElementById('ftime').textContent =
+    new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + ' 更新';
+  updateBadges();
+  render();
+}
+
+function getArticles() {
+  if (currentTab === 'all') {
+    const seen = new Set();
+    return feedData.flat()
+      .sort((a,b) => b.date - a.date)
+      .filter(a => {
+        const k = a.title.substring(0,20);
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+  }
+  return feedData[parseInt(currentTab)] || [];
+}
+
+function render() {
+  const articles = getArticles();
+  document.getElementById('fcnt').textContent = `記事 ${articles.length}件`;
+  const main = document.getElementById('main');
+
+  // ステータスバー
+  const statusHtml = ANTENNAS.map((a,i) => {
+    const s = feedStatus[i];
+    if (s === null) return '';
+    return `<span class="${s?'status-ok':'status-ng'}">${s?'✓':'✗'} ${a.name}</span>`;
+  }).join('');
+
+  if (!articles.length) {
+    main.innerHTML = `
+      <div class="status-bar">${statusHtml}</div>
+      <div class="empty">記事を取得できませんでした<br>通信環境を確認して更新してください</div>`;
+    return;
+  }
+
+  const cardsHtml = articles.map((a,i) => {
+    const isRead = readIds.has(a.id);
+    const r = i<3 ? ['🥇','🥈','🥉'][i] : (i+1);
+    const rClass = i<3 ? 'rank top3' : 'rank';
+    const t = relTime(a.date);
+    const sid = a.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<a class="article-card${isRead?' read':''}" href="${esc(a.link)}" target="_blank" rel="noopener" onclick="markRead('${sid}',this)">
+      <div class="${rClass}">${r}</div>
+      <div class="article-body">
+        <div class="article-title">${esc(a.title)}</div>
+        <div class="article-meta">
+          <span class="source-name">${esc(a.source)}</span>
+          ${t?`<span>${t}</span>`:''}
+        </div>
+      </div>
+    </a>`;
+  }).join('');
+
+  main.innerHTML = `<div class="status-bar">${statusHtml}</div>${cardsHtml}`;
+}
+
+function markRead(id, el) {
+  readIds.add(id);
+  saveRead();
+  if (el) el.classList.add('read');
+  updateBadges();
+}
+
+function markAllRead() {
+  getArticles().forEach(a => readIds.add(a.id));
+  saveRead();
+  updateBadges();
+  render();
+}
+
+function saveRead() {
+  try {
+    const arr = [...readIds].slice(-600);
+    readIds = new Set(arr);
+    localStorage.setItem('r', JSON.stringify(arr));
+  } catch {}
+}
+
+function updateBadges() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    const b = tab.querySelector('.badge');
+    if (b) b.remove();
+    const idx = tab.dataset.tab;
+    const arts = idx==='all' ? (() => {
+      const seen=new Set();
+      return feedData.flat().filter(a=>{const k=a.title.substring(0,20);if(seen.has(k))return false;seen.add(k);return true;});
+    })() : (feedData[parseInt(idx)]||[]);
+    const unread = arts.filter(a => !readIds.has(a.id)).length;
+    if (unread > 0) {
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.textContent = unread > 99 ? '99+' : unread;
+      tab.appendChild(span);
+    }
+  });
+}
+
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = el.dataset.tab;
+  render();
+}
+
+function relTime(date) {
+  if (!date?.getTime()) return '';
+  const m = Math.floor((Date.now()-date)/60000);
+  if (m<1) return 'たった今';
+  if (m<60) return `${m}分前`;
+  if (m<1440) return `${Math.floor(m/60)}時間前`;
+  return `${Math.floor(m/1440)}日前`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadAll();
+setInterval(loadAll, 20*60*1000);
+</script>
+</body>
+</html>
