@@ -15,6 +15,8 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100dvh; }
+
+  /* ── ヘッダー ── */
   header {
     position: sticky; top: 0; z-index: 50;
     background: var(--bg); border-bottom: 1px solid var(--border);
@@ -26,10 +28,19 @@
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--muted); padding: 6px 12px; border-radius: 20px;
     font-size: 12px; font-family: inherit; cursor: pointer; text-decoration: none;
-    display: inline-flex; align-items: center;
+    display: inline-flex; align-items: center; white-space: nowrap;
   }
   .btn:active { background: var(--border); }
   .btn.accent { border-color: var(--accent); color: var(--accent); }
+
+  /* ── プルリフレッシュインジケーター ── */
+  #pull-indicator {
+    overflow: hidden; height: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; color: var(--muted);
+    transition: height 0.1s; background: var(--bg);
+  }
+
+  /* ── タブ ── */
   .tabbar {
     position: sticky; top: 45px; z-index: 40;
     background: var(--bg); border-bottom: 1px solid var(--border);
@@ -46,46 +57,51 @@
     display: inline-block; background: var(--accent); color: #fff;
     font-size: 10px; padding: 1px 5px; border-radius: 10px; margin-left: 4px;
   }
-  main { padding: 8px 10px 80px; }
+
+  /* ── 記事リスト ── */
+  main { padding: 6px 10px 80px; }
   .loading {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; padding: 70px 0; gap: 14px;
     color: var(--muted); font-size: 13px;
   }
   .spinner {
-    width: 36px; height: 36px; border: 3px solid var(--border);
+    width: 32px; height: 32px; border: 3px solid var(--border);
     border-top-color: var(--accent); border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
   .article-card {
     display: flex; align-items: center; gap: 10px;
-    background: var(--surface); border-radius: 10px; padding: 11px 12px;
-    margin-bottom: 4px; cursor: pointer;
+    background: var(--surface); border-radius: 8px; padding: 10px 12px;
+    margin-bottom: 3px; cursor: pointer;
   }
   .article-card:active { background: var(--surface2); }
-  .article-card.read { opacity: 0.35; }
-  .rank { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 22px; flex-shrink: 0; text-align: center; }
+  .article-card.read { opacity: 0.32; }
+  .rank { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 20px; flex-shrink: 0; text-align: center; }
   .rank.top3 { font-size: 14px; }
   .article-body { flex: 1; min-width: 0; }
-  .article-title { font-size: 14px; font-weight: 700; line-height: 1.5; margin-bottom: 5px; word-break: break-all; }
+  .article-title { font-size: 13px; font-weight: 700; line-height: 1.55; margin-bottom: 4px; word-break: break-all; }
   .article-meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); }
   .source-name { color: var(--accent); font-weight: 700; }
   .ext-btn {
-    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
     background: var(--surface2); border: 1px solid var(--border);
-    color: var(--muted); font-size: 13px; display: flex; align-items: center;
+    color: var(--muted); font-size: 12px; display: flex; align-items: center;
     justify-content: center; text-decoration: none; cursor: pointer;
   }
   .ext-btn:active { background: var(--border); }
+
   .status-bar {
-    background: var(--surface); border-radius: 8px; padding: 8px 12px;
-    margin-bottom: 8px; font-size: 11px; color: var(--muted);
+    background: var(--surface); border-radius: 8px; padding: 7px 12px;
+    margin-bottom: 6px; font-size: 11px; color: var(--muted);
     display: flex; gap: 6px; flex-wrap: wrap;
   }
   .status-ok { color: #4ecc96; }
   .status-ng { color: #ff5f7e; }
-  .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 13px; line-height: 2.2; }
+  .empty { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 13px; line-height: 2.4; }
+
   footer {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--bg); border-top: 1px solid var(--border);
@@ -93,63 +109,77 @@
     display: flex; justify-content: space-between;
   }
 
-  /* リーダーモーダル */
+  /* ── リーダーモーダル ── */
   #reader-modal {
-    display: none; position: fixed; inset: 0; z-index: 100;
-    background: var(--bg); flex-direction: column;
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg); display: flex; flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     overscroll-behavior: contain;
   }
-  #reader-modal.open { display: flex; }
+  #reader-modal.open { transform: translateY(0); }
+
   #reader-header {
-    position: sticky; top: 0; background: var(--bg);
+    flex-shrink: 0; background: var(--bg);
     border-bottom: 1px solid var(--border);
-    padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    padding: 10px 12px; display: flex; align-items: center; gap: 8px;
   }
+  #reader-header .spacer { flex: 1; }
+  .fs-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); width: 30px; height: 30px; border-radius: 6px;
+    font-size: 13px; font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fs-btn:active { background: var(--border); }
+
   #reader-body {
-    flex: 1; overflow-y: auto; padding: 18px 18px 80px;
-    -webkit-overflow-scrolling: touch;
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
+  /* ドラッグハンドル */
+  #reader-handle {
+    text-align: center; padding: 8px 0 4px; color: var(--border); font-size: 20px; line-height: 1;
+    cursor: grab;
+  }
+
   #reader-title {
-    font-size: 18px; font-weight: 900; line-height: 1.6;
-    margin-bottom: 18px; color: var(--text);
+    font-size: 15px; font-weight: 900; line-height: 1.6;
+    padding: 12px 16px 0; color: var(--text);
+    border-bottom: 2px solid var(--accent); margin-bottom: 0;
+    padding-bottom: 12px;
   }
-  #reader-content {
-    font-size: 15px; line-height: 2; color: #d8d8ea;
+
+  #reader-content { padding: 0 0 80px; }
+
+  /* 2ch スレ投稿スタイル */
+  .post {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
   }
-  #reader-content img {
-    max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0; display: block;
+  .post-num {
+    color: var(--accent); font-size: 12px; font-weight: 900;
+    margin-bottom: 5px;
   }
-  #reader-content a { color: var(--accent); word-break: break-all; }
-  #reader-content p { margin-bottom: 14px; }
-  #reader-content h1, #reader-content h2, #reader-content h3 {
-    margin: 18px 0 10px; font-weight: 900; line-height: 1.5;
+  .post-body {
+    font-size: 14px; line-height: 1.85; color: var(--text);
+    word-break: break-all; white-space: pre-wrap;
   }
-  #reader-content blockquote {
-    border-left: 3px solid var(--accent); padding-left: 14px;
-    color: var(--muted); margin: 14px 0; font-style: normal;
-  }
-  #reader-content ul, #reader-content ol {
-    padding-left: 20px; margin-bottom: 14px;
-  }
-  #reader-content li { margin-bottom: 6px; }
-  #reader-content pre, #reader-content code {
-    background: var(--surface2); border-radius: 4px; padding: 2px 6px;
-    font-size: 13px; word-break: break-all;
-  }
-  #reader-content table {
-    width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 13px;
-  }
-  #reader-content td, #reader-content th {
-    border: 1px solid var(--border); padding: 6px 8px;
-  }
+  .post-body a { color: var(--accent); text-decoration: none; }
+
+  /* Readability フォールバック */
+  .prose { padding: 14px 16px 0; font-size: 14px; line-height: 1.9; color: #d0d0e8; }
+  .prose p { margin-bottom: 12px; }
+  .prose img { max-width: 100%; border-radius: 6px; margin: 8px 0; display: block; }
+  .prose a { color: var(--accent); }
+  .prose blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--muted); margin: 10px 0; }
+
   .reader-loading {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; padding: 60px 0; gap: 14px;
     color: var(--muted); font-size: 13px;
   }
   .reader-error {
-    text-align: center; padding: 40px 20px; color: var(--muted);
-    font-size: 13px; line-height: 2.4;
+    text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; line-height: 2.6;
   }
 </style>
 </head>
@@ -159,16 +189,19 @@
 <div id="reader-modal">
   <div id="reader-header">
     <button class="btn" onclick="closeReader()">← 戻る</button>
-    <a id="reader-ext" href="#" target="_blank" rel="noopener" class="btn accent" style="margin-left:auto">
-      元記事 ↗
-    </a>
+    <div class="spacer"></div>
+    <button class="fs-btn" onclick="changeFontSize(-1)">A-</button>
+    <button class="fs-btn" onclick="changeFontSize(1)">A+</button>
+    <a id="reader-ext" href="#" target="_blank" rel="noopener" class="btn accent">元記事 ↗</a>
   </div>
   <div id="reader-body">
+    <div id="reader-handle">―</div>
     <div id="reader-title"></div>
     <div id="reader-content"></div>
   </div>
 </div>
 
+<!-- メイン -->
 <header>
   <div class="logo">📡 まとめリーダー</div>
   <div class="header-right">
@@ -176,6 +209,7 @@
     <button class="btn accent" onclick="loadAll()">↻ 更新</button>
   </div>
 </header>
+<div id="pull-indicator"></div>
 <div class="tabbar">
   <button class="tab active" data-tab="all" onclick="switchTab(this)">すべて</button>
   <button class="tab" data-tab="0" onclick="switchTab(this)">ワロタ</button>
@@ -193,8 +227,28 @@
 </footer>
 
 <script>
+/* ═══ 定数 ═══ */
 const RSS2JSON = url =>
   `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
+
+const PAGE_PROXIES = [
+  async url => {
+    const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    if (!d.contents || d.contents.length < 200) throw new Error();
+    return d.contents;
+  },
+  async url => {
+    const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error();
+    const t = await r.text();
+    if (!t || t.startsWith('{') || t.length < 200) throw new Error();
+    return t;
+  },
+];
 
 const ANTENNAS = [
   { name: 'ワロタあんてな',        rss: 'https://matomeantena.com/index.rdf' },
@@ -204,24 +258,105 @@ const ANTENNAS = [
   { name: 'コピペ情報局',           rss: 'https://news.2chblog.jp/index.rdf' },
 ];
 
+/* ═══ 状態 ═══ */
 let feedData   = ANTENNAS.map(() => []);
 let feedStatus = ANTENNAS.map(() => null);
 let currentTab = 'all';
 let readIds    = new Set();
 let articleMap = {};
+let readerFontSize = parseInt(localStorage.getItem('fs') || '14');
 
 try { readIds = new Set(JSON.parse(localStorage.getItem('r') || '[]')); } catch {}
 
+/* ═══ ユーティリティ ═══ */
 function cleanText(s) {
   return s.replace(/<[^>]+>/g, '')
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
     .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ').trim();
 }
-
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function postText(el) {
+  return el.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ')
+    .replace(/\n{3,}/g, '\n\n').trim();
+}
+function relTime(date) {
+  if (!date?.getTime()) return '';
+  const m = Math.floor((Date.now() - date) / 60000);
+  if (m < 1)    return 'たった今';
+  if (m < 60)   return `${m}分前`;
+  if (m < 1440) return `${Math.floor(m / 60)}時間前`;
+  return `${Math.floor(m / 1440)}日前`;
+}
 
+/* ═══ スレ投稿抽出 ═══ */
+function extractThreadPosts(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+
+  // ノイズ除去
+  div.querySelectorAll(
+    'script,style,iframe,ins,aside,nav,header,footer,' +
+    '.ad,.advertisement,.widget,.sidebar,.related,.sns,.share'
+  ).forEach(el => el.remove());
+
+  // 1. <blockquote> を優先（入れ子は除外）
+  const bqs = [...div.querySelectorAll('blockquote')].filter(bq =>
+    !bq.parentElement?.closest('blockquote') && bq.textContent.trim().length > 5
+  );
+  if (bqs.length >= 2) return bqs.map((el, i) => ({ num: i + 1, text: postText(el) }));
+
+  // 2. よくある class パターン
+  const patterns = [
+    '[class*="post-body"]','[class*="res-body"]','[class*="message"]',
+    '[class*="thread"]','[class*="bbs-post"]','[class*="quote"]',
+  ];
+  for (const sel of patterns) {
+    const found = [...div.querySelectorAll(sel)].filter(el =>
+      el.textContent.trim().length > 10
+    );
+    if (found.length >= 2) return found.map((el, i) => ({ num: i + 1, text: postText(el) }));
+  }
+
+  return null; // Readability フォールバック
+}
+
+function renderPosts(posts, title) {
+  document.getElementById('reader-title').textContent = title;
+  const fs = readerFontSize;
+  document.getElementById('reader-content').innerHTML =
+    posts.map(p => `
+      <div class="post">
+        <div class="post-num">${p.num}</div>
+        <div class="post-body" style="font-size:${fs}px">${esc(p.text)}</div>
+      </div>`).join('');
+}
+
+function renderReadability(html, title) {
+  document.getElementById('reader-title').textContent = title;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  tmp.querySelectorAll('script,iframe,ins,aside').forEach(el => el.remove());
+  tmp.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; });
+  document.getElementById('reader-content').innerHTML =
+    `<div class="prose" style="font-size:${readerFontSize}px">${tmp.innerHTML}</div>`;
+}
+
+function renderError(link) {
+  document.getElementById('reader-content').innerHTML = `
+    <div class="reader-error">
+      記事の取得に失敗しました。<br>
+      <a href="${esc(link)}" target="_blank" rel="noopener"
+         class="btn accent" style="margin-top:16px">元記事を開く ↗</a>
+    </div>`;
+}
+
+/* ═══ RSS 取得 ═══ */
 async function fetchFeed(idx) {
   const { name, rss } = ANTENNAS[idx];
   try {
@@ -231,12 +366,14 @@ async function fetchFeed(idx) {
     if (data.status !== 'ok' || !data.items?.length) throw new Error();
     feedStatus[idx] = true;
     return data.items.slice(0, 25).map((item, i) => ({
-      id:     (item.link || name + i).substring(0, 80),
-      title:  cleanText(item.title || ''),
-      link:   item.link || '#',
-      date:   item.pubDate ? new Date(item.pubDate) : new Date(0),
-      source: name,
+      id:          (item.link || name + i).substring(0, 80),
+      title:       cleanText(item.title || ''),
+      link:        item.link || '#',
+      date:        item.pubDate ? new Date(item.pubDate) : new Date(0),
+      source:      name,
       idx,
+      content:     item.content || '',
+      description: item.description || '',
     }));
   } catch {
     feedStatus[idx] = false;
@@ -251,11 +388,12 @@ async function loadAll() {
   const results = await Promise.all(ANTENNAS.map((_, i) => fetchFeed(i)));
   results.forEach((d, i) => { feedData[i] = d; });
   document.getElementById('ftime').textContent =
-    new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) + ' 更新';
+    new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) + ' 更新';
   updateBadges();
   render();
 }
 
+/* ═══ レンダリング ═══ */
 function getArticles() {
   if (currentTab === 'all') {
     const seen = new Set();
@@ -307,14 +445,14 @@ function render() {
         </div>
       </div>
       <a class="ext-btn" href="${esc(a.link)}" target="_blank" rel="noopener"
-         onclick="event.stopPropagation(); markReadById('${sid}')" title="元記事を開く">↗</a>
+         onclick="event.stopPropagation(); markReadById('${sid}')" title="元記事">↗</a>
     </div>`;
   }).join('');
 
   main.innerHTML = `<div class="status-bar">${statusHtml}</div>${cardsHtml}`;
 }
 
-/* ── リーダーモード ── */
+/* ═══ リーダー ═══ */
 async function openReader(id) {
   const a = articleMap[id];
   if (!a) return;
@@ -324,85 +462,71 @@ async function openReader(id) {
   document.getElementById('reader-ext').href = a.link;
   document.getElementById('reader-title').textContent = a.title;
   document.getElementById('reader-content').innerHTML =
-    '<div class="reader-loading"><div class="spinner"></div><span>記事を取得中...</span></div>';
+    '<div class="reader-loading"><div class="spinner"></div><span>スレを取得中...</span></div>';
+
   document.getElementById('reader-modal').classList.add('open');
   document.getElementById('reader-body').scrollTop = 0;
+  history.pushState({ reader: true }, '');
 
-  try {
-    const res = await fetch(
-      `https://api.allorigins.win/get?url=${encodeURIComponent(a.link)}`,
-      { signal: AbortSignal.timeout(15000) }
-    );
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    const html = data.contents;
-    if (!html || html.length < 300) throw new Error('empty');
-
-    const parser  = new DOMParser();
-    const doc     = parser.parseFromString(html, 'text/html');
-
-    // ベースURL設定で相対リンク解決
-    const base = doc.createElement('base');
-    base.href  = a.link;
-    doc.head.prepend(base);
-
-    const article = new Readability(doc).parse();
-    if (!article?.content) throw new Error('parse failed');
-
-    document.getElementById('reader-title').textContent = article.title || a.title;
-    // 外部リンクをすべて target=_blank に
-    const tmp = document.createElement('div');
-    tmp.innerHTML = article.content;
-    tmp.querySelectorAll('a').forEach(el => {
-      el.target = '_blank'; el.rel = 'noopener';
-    });
-    // スクリプト・iframe除去
-    tmp.querySelectorAll('script,iframe,ins,aside').forEach(el => el.remove());
-    document.getElementById('reader-content').innerHTML = tmp.innerHTML;
-
-  } catch {
-    document.getElementById('reader-content').innerHTML = `
-      <div class="reader-error">
-        記事の取得に失敗しました。<br>
-        <a href="${esc(a.link)}" target="_blank" rel="noopener"
-           class="btn accent" style="margin-top:16px">
-          元記事を開く ↗
-        </a>
-      </div>`;
+  // ① RSS content フィールドで即時試行
+  if (a.content && a.content.length > 300) {
+    const posts = extractThreadPosts(a.content);
+    if (posts && posts.length >= 2) { renderPosts(posts, a.title); return; }
   }
+
+  // ② ページ取得（複数プロキシ順番試行）
+  for (const proxy of PAGE_PROXIES) {
+    try {
+      const html = await proxy(a.link);
+
+      // スレ投稿抽出を試みる
+      const posts = extractThreadPosts(html);
+      if (posts && posts.length >= 2) { renderPosts(posts, a.title); return; }
+
+      // Readability フォールバック
+      const parser  = new DOMParser();
+      const doc     = parser.parseFromString(html, 'text/html');
+      const base    = doc.createElement('base');
+      base.href     = a.link;
+      doc.head.prepend(base);
+      const article = new Readability(doc).parse();
+      if (article?.content) {
+        const posts2 = extractThreadPosts(article.content);
+        if (posts2 && posts2.length >= 2) {
+          renderPosts(posts2, article.title || a.title);
+        } else {
+          renderReadability(article.content, article.title || a.title);
+        }
+        return;
+      }
+    } catch { /* 次のプロキシへ */ }
+  }
+
+  renderError(a.link);
 }
 
 function closeReader() {
   document.getElementById('reader-modal').classList.remove('open');
 }
 
-// Android の戻るボタン対応
-window.addEventListener('popstate', () => {
-  if (document.getElementById('reader-modal').classList.contains('open')) {
-    closeReader();
-  }
-});
-document.getElementById('reader-modal').addEventListener('transitionend', () => {});
-
-/* ── 既読管理 ── */
-function markReadById(id) {
-  readIds.add(id);
-  saveRead();
-  document.querySelectorAll('.article-card').forEach(el => {
-    if (el.querySelector(`[onclick*="${id.substring(0,20)}"]`) || el.getAttribute('onclick')?.includes(id.substring(0,20))) return;
+function changeFontSize(delta) {
+  readerFontSize = Math.max(11, Math.min(20, readerFontSize + delta));
+  localStorage.setItem('fs', readerFontSize);
+  document.querySelectorAll('.post-body, .prose').forEach(el => {
+    el.style.fontSize = readerFontSize + 'px';
   });
-  // カードのopacityを直接更新
-  document.querySelectorAll('.article-card').forEach(el => {
-    const onclick = el.getAttribute('onclick') || '';
-    if (onclick.includes(id.replace(/'/g, "\\'"))) el.classList.add('read');
-  });
-  updateBadges();
 }
 
-function markRead(id, el) {
+/* ═══ 既読管理 ═══ */
+function markReadById(id) {
+  if (readIds.has(id)) return;
   readIds.add(id);
   saveRead();
-  if (el) el.classList.add('read');
+  document.querySelectorAll('.article-card').forEach(el => {
+    if ((el.getAttribute('onclick') || '').includes(id.substring(0, 30).replace(/'/g, "\\'"))) {
+      el.classList.add('read');
+    }
+  });
   updateBadges();
 }
 
@@ -423,8 +547,7 @@ function saveRead() {
 
 function updateBadges() {
   document.querySelectorAll('.tab').forEach(tab => {
-    const b = tab.querySelector('.badge');
-    if (b) b.remove();
+    tab.querySelector('.badge')?.remove();
     const idx  = tab.dataset.tab;
     const arts = idx === 'all' ? (() => {
       const seen = new Set();
@@ -451,15 +574,51 @@ function switchTab(el) {
   render();
 }
 
-function relTime(date) {
-  if (!date?.getTime()) return '';
-  const m = Math.floor((Date.now() - date) / 60000);
-  if (m < 1)    return 'たった今';
-  if (m < 60)   return `${m}分前`;
-  if (m < 1440) return `${Math.floor(m / 60)}時間前`;
-  return `${Math.floor(m / 1440)}日前`;
+/* ═══ スワイプダウンでリーダーを閉じる ═══ */
+{
+  const body = document.getElementById('reader-body');
+  let swipeY = 0;
+  body.addEventListener('touchstart', e => { swipeY = e.touches[0].clientY; }, { passive: true });
+  body.addEventListener('touchend', e => {
+    const dist = e.changedTouches[0].clientY - swipeY;
+    if (dist > 80 && body.scrollTop === 0) closeReader();
+  }, { passive: true });
 }
 
+/* ═══ Android 戻るボタン ═══ */
+window.addEventListener('popstate', () => {
+  if (document.getElementById('reader-modal').classList.contains('open')) closeReader();
+});
+
+/* ═══ プルトゥリフレッシュ ═══ */
+{
+  const indicator = document.getElementById('pull-indicator');
+  const THRESHOLD = 60;
+  let startY = 0, dist = 0, pulling = false;
+
+  document.addEventListener('touchstart', e => {
+    if (document.getElementById('reader-modal').classList.contains('open')) return;
+    startY = e.touches[0].clientY;
+    pulling = document.scrollingElement.scrollTop === 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    dist = Math.max(0, e.touches[0].clientY - startY);
+    if (dist > 10) {
+      indicator.style.height = Math.min(dist * 0.6, 40) + 'px';
+      indicator.textContent  = dist > THRESHOLD ? '↑ 放して更新' : '↓ 引いて更新';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (dist > THRESHOLD) loadAll();
+    indicator.style.height = '0';
+    dist = 0; pulling = false;
+  }, { passive: true });
+}
+
+/* ═══ 起動 ═══ */
 loadAll();
 setInterval(loadAll, 20 * 60 * 1000);
 </script>
